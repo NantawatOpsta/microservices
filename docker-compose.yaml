@@ -1,0 +1,142 @@
+services:
+    
+    redis:
+        container_name: "redis"
+        image: redis:7.0.11
+        volumes:
+            - redisdata:/data
+
+    rabbitmq:
+        container_name: "rabbitmq"
+        image: rabbitmq:3.8.21-management
+        ports:
+            - "15672:15672"
+        volumes:
+            - rabbitdata:/var/lib/rabbitmq/data/
+        environment:
+            - RABBITMQ_DEFAULT_USER=singleportal
+            - RABBITMQ_DEFAULT_PASS=singleportal
+
+    service-a:
+        container_name: service-a
+        build:
+            context: service-a
+            dockerfile: Dockerfile.dev
+        user: 1000:1000
+        stdin_open: true
+        tty: true
+        ports:
+            - "8000:3000"
+        volumes:
+            - ./service-a/source:/home/node
+        command: sh -c "yarn install && yarn start:dev"
+        env_file:
+            - .env
+    
+    service-a-dapr:
+        container_name: "service-a-dapr"
+        image: daprio/daprd:1.10.7-linux-amd64
+        depends_on:
+            - service-a
+        volumes:
+            - ./dapr:/components
+        command:
+            [
+                "./daprd",
+                "-app-id",
+                "service-a",
+                "-app-port",
+                "3000",
+                "-placement-host-address",
+                "placement:50006",
+                "-components-path",
+                "/components",
+            ]
+        network_mode: "service:service-a"
+
+    service-b:
+        container_name: service-b
+        build:
+            context: service-b
+            dockerfile: Dockerfile.dev
+        user: 1000:1000
+        stdin_open: true
+        tty: true
+        volumes:
+            - ./service-b/source:/app
+        command: python3 -m flask run --debug --host=0.0.0.0
+        env_file:
+            - .env
+        ports:
+            - "8001:5000"
+
+    service-b-dapr:
+        container_name: "service-b-dapr"
+        image: daprio/daprd:1.10.7-linux-amd64
+        depends_on:
+            - service-b
+        volumes:
+            - ./dapr:/components
+        command:
+            [
+                "./daprd",
+                "-app-id",
+                "service-b",
+                "-app-port",
+                "5000",
+                "-placement-host-address",
+                "placement:50006",
+                "-components-path",
+                "/components",
+            ]
+        network_mode: "service:service-b"
+
+    service-c:
+        container_name: service-c
+        build:
+            context: service-c
+            dockerfile: Dockerfile.dev
+        user: 1000:1000
+        stdin_open: true
+        tty: true
+        volumes:
+            - ./service-c/source:/app
+        command: python3 -m flask run --debug --host=0.0.0.0
+        env_file:
+            - .env
+        ports:
+            - "8002:5000"
+
+    service-c-dapr:
+        container_name: "service-c-dapr"
+        image: daprio/daprd:1.10.7-linux-amd64
+        depends_on:
+            - service-c
+        volumes:
+            - ./dapr:/components
+        command:
+            [
+                "./daprd",
+                "-app-id",
+                "service-c",
+                "-app-port",
+                "5000",
+                "-placement-host-address",
+                "placement:50006",
+                "-components-path",
+                "/components",
+            ]
+        network_mode: "service:service-c"
+
+    placement:
+        container_name: "placement"
+        image: daprio/dapr:1.10.7-linux-amd64
+        command: ["./placement", "-port", "50006"]
+        depends_on:
+            - rabbitmq
+            - redis
+volumes:
+    redisdata:
+        driver: local
+    rabbitdata:
+        driver: local
