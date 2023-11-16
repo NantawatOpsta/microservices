@@ -12,7 +12,7 @@ export class AppService {
 
   invoke(): any {
     this.httpService
-      .get('http://127.0.0.1:3500/v1.0/invoke/service-b/method/api/data')
+      .get('http://127.0.0.1:3500/v1.0/invoke/service-b/method/api')
       .subscribe((response) => {
         console.log(response.data);
       });

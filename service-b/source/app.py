@@ -4,6 +4,11 @@ import datetime
 app = Flask(__name__)
 
 
+@app.route("/api", methods=["GET"])
+def GETAPIDATA():
+    return "message from service-b"
+
+
 @app.route("/api/data", methods=["POST"])
 def APIDATA():
     datetime_now = datetime.datetime.now()
